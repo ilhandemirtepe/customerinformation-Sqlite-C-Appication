@@ -8,39 +8,137 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Data.SQLite;
-namespace SqliteDesktopRehberApp
+
+namespace Sqlite_Desktop_APP_Rehber
 {
     public partial class Form1 : Form
     {
+        public class ClassListelemeYap
+        {
+            public int Myid { get; set; }
+            public string MyName { get; set; }
+            public string MySurname { get; set; }
+            public string MyTelephoneNumber { get; set; }
+
+        }
+
+        string connectstring;
+        public int guncellenecekId;
         public Form1()
         {
             InitializeComponent();
+            connectstring = @" Data Source=C:\Users\Bey\Downloads\sil\db.Demo.db;Version=3";
+            listelemeYap();
         }
 
-        private void button1_Click(object sender, EventArgs e)
+       
+
+        private void btn_ekle_Click(object sender, EventArgs e)
         {
-            SQLiteConnection sqlite_conn;
-            SQLiteCommand sqlite_cmd;
-            SQLiteDataReader sqlite_datareader;
-            sqlite_conn = new SQLiteConnection("Data Source=database.db;Version=3;New=True;Compress=True;");
-            sqlite_conn.Open();
-            sqlite_cmd = sqlite_conn.CreateCommand();
-            sqlite_cmd.CommandText = "CREATE TABLE test (id integer primary key, text varchar(100));";
-            sqlite_cmd.ExecuteNonQuery();
-            sqlite_cmd.CommandText = "INSERT INTO test (id, text) VALUES (1, 'Test Text 1');";
-            sqlite_cmd.ExecuteNonQuery();
-            sqlite_cmd.CommandText = "INSERT INTO test (id, text) VALUES (2, 'Test Text 2');";
-            sqlite_cmd.ExecuteNonQuery();
-            sqlite_cmd.CommandText = "SELECT * FROM test";
-            sqlite_datareader = sqlite_cmd.ExecuteReader();
-            while (sqlite_datareader.Read()) 
+            using (SQLiteConnection con = new SQLiteConnection(connectstring))
             {
-               // System.Console.WriteLine(sqlite_datareader["text"]);
-                string Myreader = sqlite_datareader.GetString(0);
-                MessageBox.Show(Myreader);
+                try
+                {
+                    SQLiteCommand cmd = new SQLiteCommand();
+                    cmd.CommandText = @"INSERT INTO rehber(ad,soyad,telefon) VALUES(@AD,@SOYAD,@TELEFON)";
+                    cmd.Connection = con;
+                    cmd.Parameters.Add(new SQLiteParameter("@AD", txt_Adi.Text));
+                    cmd.Parameters.Add(new SQLiteParameter("@SOYAD", txt_Soyadi.Text));
+                    cmd.Parameters.Add(new SQLiteParameter("@TELEFON", txt_Telefon.Text));
+                    con.Open();
+                    int i = cmd.ExecuteNonQuery();
+                    if (i == 1)
+                    {
+                        //   MessageBox.Show("ekleme işlemi başarılı");
+                        listelemeYap();
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
 
             }
-            sqlite_conn.Close();
+        }
+        public void listelemeYap()
+        {
+            SQLiteConnection con = new SQLiteConnection(connectstring);
+            if (con.State == ConnectionState.Closed)
+            {
+                con.Open();
+            }
+            SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM rehber", con);
+            SQLiteDataReader dr = cmd.ExecuteReader();
+            List<ClassListelemeYap> list = new List<ClassListelemeYap>();
+            while (dr.Read())
+            {
+                list.Add(new ClassListelemeYap
+                {
+                    Myid = Convert.ToInt32(dr["id"]),
+                    MyName = dr["ad"].ToString(),
+                    MySurname = dr["soyad"].ToString(),
+                    MyTelephoneNumber = dr["telefon"].ToString()
+
+                });
+            }
+            dataGridView1.DataSource = list;
+        }
+        private void btn_guncelle_Click(object sender, EventArgs e)
+        {
+            if (guncellenecekId > 0)
+            {
+                SQLiteConnection con = new SQLiteConnection(connectstring);
+                if (con.State == ConnectionState.Closed)
+                {
+                    con.Open();
+                }
+                SQLiteCommand cmd = new SQLiteCommand("UPDATE rehber SET ad=@AD,soyad=@SOYAD,telefon=@TELEFON where id=@guncellelbeni", con);
+                cmd.Parameters.AddWithValue("guncellelbeni",guncellenecekId );
+                cmd.Parameters.AddWithValue("AD",txt_Adi.Text);
+                cmd.Parameters.AddWithValue("SOYAD", txt_Soyadi.Text);
+                cmd.Parameters.AddWithValue("TELEFON",txt_Telefon.Text);
+                try
+                {
+                    cmd.ExecuteNonQuery();
+                    MessageBox.Show("günceleme işlemi başarılı");
+                    listelemeYap();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+        }
+        private void btn_sil_Click(object sender, EventArgs e)
+        {
+            SQLiteConnection con = new SQLiteConnection(connectstring);
+            if (con.State == ConnectionState.Closed)
+            {
+                con.Open();
+
+            }
+            SQLiteCommand cmd = new SQLiteCommand("DELETE FROM rehber where id=@silbeni", con);
+            cmd.Parameters.AddWithValue("silbeni", Convert.ToInt32(dataGridView1.CurrentRow.Cells[0].Value));
+            try
+            {
+                cmd.ExecuteNonQuery();
+                MessageBox.Show("silme işlemi başarılı");
+                listelemeYap();
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+        private void dataGridView1_DoubleClick(object sender, EventArgs e)
+        {
+            guncellenecekId = 0;
+            guncellenecekId = Convert.ToInt32(dataGridView1.CurrentRow.Cells[0].Value);
+            txt_Adi.Text = dataGridView1.CurrentRow.Cells[1].Value.ToString();
+            txt_Soyadi.Text = dataGridView1.CurrentRow.Cells[2].Value.ToString();
+            txt_Telefon.Text = dataGridView1.CurrentRow.Cells[3].Value.ToString();
         }
     }
 }
